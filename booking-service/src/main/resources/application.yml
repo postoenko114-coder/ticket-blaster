@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: booking-service
+
+  # Настройки Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Настройки Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: booking-group
+      auto-offset-reset: earliest
