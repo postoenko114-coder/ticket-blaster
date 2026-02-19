@@ -18,7 +18,7 @@ public class OrderProducer {
         try{
             String orderJson = objectMapper.writeValueAsString(bookingRequest);
             kafkaTemplate.send("orders-topic", bookingRequest.getUserId().toString(), orderJson);
-            System.out.println("Сообщение отправлено в Kafka: " + orderJson);
+            System.out.println("Message was sent to Kafka {}: " + orderJson);
         }catch(Exception e){
             throw new RuntimeException("Error during write Json", e);
         }
