@@ -18,7 +18,7 @@ public class TicketService {
         String ticketKey = EVENT_KEY_PREFIX + eventId;
 
         Long remainingTickets = stringRedisTemplate.opsForValue().decrement(ticketKey, quantity);
-        if(remainingTickets != null && remainingTickets > 0){
+        if(remainingTickets != null && remainingTickets >= 0){
             return true;
         } else{
             if (remainingTickets != null) {
