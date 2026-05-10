@@ -53,6 +53,12 @@ services:
     ports:
       - "5432:5432"
 
+  # Zipkin
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
 
   booking-service:
     build: ./booking-service
