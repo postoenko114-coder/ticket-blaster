@@ -11,6 +11,10 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
   mail:
     host: smtp.gmail.com
     port: 587
@@ -22,3 +26,11 @@ spring:
           auth: true
           starttls:
             enable: true
+  # Observability
+  management:
+    tracing:
+      sampling:
+        probability: 1.0
+    zipkin:
+      tracing:
+        endpoint: http://localhost:9411/api/v2/spans
