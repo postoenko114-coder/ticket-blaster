@@ -17,7 +17,7 @@ public class NotificationListener {
     private final ObjectMapper objectMapper;
     private final JavaMailSender mailSender;
 
-    @KafkaListener(topics = "orders-topic", groupId = "notifications-group")
+    @KafkaListener(topics = "notification-topic", groupId = "notification-group")
     public void listenNotifications(String message) {
         try {
             OrderDTO orderDTO = objectMapper.readValue(message, OrderDTO.class);

@@ -15,4 +15,6 @@ public class BookingRequest {
     private Long eventId;
 
     private int quantity;
+
+    private String idempotencyKey;
 }

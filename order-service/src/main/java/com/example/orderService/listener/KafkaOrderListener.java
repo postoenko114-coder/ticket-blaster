@@ -17,17 +17,13 @@ public class KafkaOrderListener {
     private final OrderService orderService;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "orders-topic", groupId = "orders-group")
+    @KafkaListener(topics = "order-topic", groupId = "order-group")
     public void listenOrders(String message) {
         log.info("Received orders message from Kafka: {}", message);
-        try {
-            OrderDTO orderDTO = objectMapper.readValue(message, OrderDTO.class);
-            orderService.processNewOrder(orderDTO);
-            log.info("Order processed successfully for user: {}", orderDTO.getUserId());
-        }catch(Exception e){
-            log.error("Error processing orders message from Kafka: {}", message, e);
-        }
 
+        OrderDTO orderDTO = objectMapper.readValue(message, OrderDTO.class);
+        orderService.processNewOrder(orderDTO);
+        log.info("Order processed successfully for user: {}", orderDTO.getUserId());
     }
 
 }

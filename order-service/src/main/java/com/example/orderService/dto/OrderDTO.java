@@ -17,4 +17,6 @@ public class OrderDTO {
 
     private String userEmail;
 
+    private String idempotencyKey;
+
 }

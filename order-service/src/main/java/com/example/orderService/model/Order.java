@@ -27,7 +27,11 @@ public class Order {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
+
+    @Column(unique = true, nullable = false)
+    private String idempotencyKey;
 
 }

@@ -32,4 +32,10 @@ public class TicketService {
         String key = EVENT_KEY_PREFIX + eventId;
         stringRedisTemplate.opsForValue().set(key, String.valueOf(count), 10, TimeUnit.MINUTES);
     }
+
+    public void cancelBooking(Long eventId, int quantity) {
+        String ticketKey = EVENT_KEY_PREFIX + eventId;
+        stringRedisTemplate.opsForValue().increment(ticketKey, quantity);
+
+    }
 }
