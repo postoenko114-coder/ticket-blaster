@@ -1,31 +1,39 @@
-Ticket Blaster
+# 🎫 System Architecture PoC: High-Load Ticketing Service
 
-Ticket Blaster is a backend application for selling and booking tickets. It is built to handle huge spikes in user traffic (like when concert tickets go on sale) by using a microservice architecture and asynchronous processing.
+Ticket Blaster is a robust backend application for selling and booking tickets. It is engineered to handle massive spikes in user traffic (e.g., ticket drops for major concerts) utilizing an Event-Driven Architecture (EDA) and asynchronous processing to ensure high availability and zero data loss.
 
-Architecture & Technologies
+## 🚀 Key Features & Engineering Patterns
 
-The system is divided into several independent services:
+* **High-Throughput Processing:** Leverages Redis for ultra-fast, in-memory seat availability checks, preventing double-booking during high-concurrency events.
+* **Transactional Outbox Pattern:** Guarantees atomicity between local database transactions (PostgreSQL) and message publishing (Kafka), eliminating the dual-write problem.
+* **Idempotency:** Implements idempotency keys to safely process retries during network failures, ensuring no duplicate charges.
+* **Distributed Observability:** Integrated Micrometer Tracing and Zipkin to generate unified `traceId`s across all microservices, allowing for complete end-to-end request tracking.
 
-API Gateway: Built with Spring Cloud Gateway, it acts as the single entry point for all user requests.
-Booking Service: Uses Redis to quickly check if seats are available and safely reserve them without double-booking.
-Order Service: Saves the final order details reliably into a PostgreSQL database.
-Notification Service: Sends email confirmations to users in the background.
-Apache Kafka: Acts as the main communication channel between the services. It makes sure no orders are lost even if thousands of people are buying tickets at the exact same second.
+## 🛠 Tech Stack
 
-Performance Testing Results
+* **Backend:** Java 17, Spring Boot 3
+* **Databases & Cache:** PostgreSQL, Flyway, Redis
+* **Message Broker:** Apache Kafka
+* **API Gateway:** Spring Cloud Gateway
+* **Observability:** Micrometer Tracing, Zipkin
+* **Performance Testing:** k6
+* **Infrastructure:** Docker, Docker Compose
 
-We stress-tested the application using the k6 testing tool. By combining Redis (for speed) and Kafka (for background processing), the system handles massive loads easily.
-Testing with 300 simultaneous users showed:
-Speed: Over 1,627 requests per second (RPS).
-Total processed: More than 162,800 requests.
-Response time: 95% of requests finished in under 300 milliseconds.
-Stability: 100% success rate with zero errors.
+## 🧩 Microservices Architecture
 
-How to Run the Project
+The system is decoupled into four independent services:
 
-Everything runs inside Docker containers, so you don't need to install databases manually.
-Clone the repository to your computer.
-Open your terminal in the project folder and run: docker-compose up -d --build
-The main API will be available on port 8080.
-You can monitor Kafka messages by opening localhost:8090 in your browser.
-To create a booking, simply send a POST request to localhost:8080/api/book
+* **`api-gateway`**: The single entry point for all client requests, managing routing and initiating the distributed trace context.
+* **`booking-service`**: Validates incoming requests and utilizes Redis to quickly reserve seats. It asynchronously publishes booking events to Kafka.
+* **`order-service`**: Consumes booking events, persists order details reliably in PostgreSQL, and orchestrates outbound events via the Outbox pattern.
+* **`notification-service`**: An isolated background worker that listens for successful orders and emulates the dispatch of confirmation emails.
+
+## 📊 Performance Testing Results
+
+The architecture was stress-tested using **k6** to validate its resilience under heavy load. By offloading write operations to Kafka and utilizing Redis for immediate validation, the system easily absorbs traffic spikes.
+
+Testing with **300 simultaneous users** yielded the following metrics:
+* **Throughput:** > 1,627 Requests Per Second (RPS)
+* **Volume:** > 162,800 requests processed
+* **Latency:** p95 response time under 300 ms
+* **Reliability:** 100% success rate (zero dropped requests or errors)
