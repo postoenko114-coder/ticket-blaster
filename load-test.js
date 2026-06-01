@@ -33,23 +33,25 @@ export default function (data) {
 
     const randomUserId = Math.floor(Math.random() * 1000000);
     const randomQuantity = Math.floor(Math.random() * 4) + 1;
+    const idempotencyKey = `${randomUserId}-${data.eventId}-${Date.now()}-${__VU}-${__ITER}`;
 
     const payload = JSON.stringify({
         userId: randomUserId,
         userEmail: `testuser${randomUserId}@gmail.com`,
         eventId: data.eventId,
-        quantity: randomQuantity
+        quantity: randomQuantity,
     });
     const params = {
         headers: {
             'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
         },
     };
 
     const res = http.post(url, payload, params);
 
     check(res, {
-        'status is 200': (r) => r.status === 200,
+        'status is 202': (r) => r.status === 202,
     });
 
     sleep(0.01);
