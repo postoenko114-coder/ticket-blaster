@@ -1,0 +1,6 @@
+ALTER TABLE outbox_events
+    ADD COLUMN aggregate_type VARCHAR(100) NOT NULL DEFAULT 'ORDER',
+    ADD COLUMN event_type VARCHAR(100) NOT NULL DEFAULT 'ORDER_PAID',
+    ADD COLUMN processed_at TIMESTAMP,
+    ADD COLUMN attempts INT NOT NULL DEFAULT 0,
+    ADD COLUMN last_error TEXT;

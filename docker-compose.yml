@@ -9,12 +9,18 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # 2. Kafka Broker
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     environment:
@@ -25,12 +31,22 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
 
   # 3. Redis
   redis:
     image: redis:alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # 4. Kafka UI
   kafka-ui:
@@ -41,17 +57,38 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
 
-  #5. PostgresSQL
-  postgres:
+  #5. PostgreSQL for order-service
+  order-postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ticket_db
+      POSTGRES_USER: order_admin
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD}
+      POSTGRES_DB: order_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_admin -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  #6. PostgreSQL for notification-service
+  notification-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: notification_admin
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+      POSTGRES_DB: notification_db
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification_admin -d notification_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # Zipkin
   zipkin:
@@ -59,40 +96,87 @@ services:
     container_name: zipkin
     ports:
       - "9411:9411"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9411/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   booking-service:
     build: ./booking-service
     ports:
       - "8081:8081"
     depends_on:
-      - redis
-      - kafka
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   order-service:
     build: ./order-service
     ports:
       - "8082:8082"
     depends_on:
-      - postgres
-      - kafka
+      order-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://order-postgres:5432/order_db
+      - SPRING_DATASOURCE_USERNAME=order_admin
+      - ORDER_DB_PASSWORD=${ORDER_DB_PASSWORD}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   notification-service:
     build: ./notification-service
     ports:
       - "8083:8083"
+    depends_on:
+      notification-postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://notification-postgres:5432/notification_db
+      - SPRING_DATASOURCE_USERNAME=notification_admin
+      - NOTIFICATION_DB_PASSWORD=${NOTIFICATION_DB_PASSWORD}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8083/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   api-gateway:
     build: ./api-gateway
     ports:
       - "8080:8080"
     depends_on:
-      - booking-service
+      booking-service:
+        condition: service_healthy
+    environment:
+      - BOOKING_SERVICE_URL=http://booking-service:8081
+      - ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
